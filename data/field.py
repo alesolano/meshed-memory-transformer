@@ -122,6 +122,24 @@ class ImageDetectionsField(RawField):
 
         return precomp_data.astype(np.float32)
 
+    def preprocess_ale_test(self, avoid_precomp=False):
+        try:
+            f = h5py.File(self.detections_path, 'r')
+            precomp_data = f['features'][()]
+            if self.sort_by_prob:
+                precomp_data = precomp_data[np.argsort(np.max(f['cls_prob'][()], -1))[::-1]]
+        except KeyError:
+            warnings.warn('Could not find detections for this image')
+            precomp_data = np.random.rand(10,2048)
+
+        delta = self.max_detections - precomp_data.shape[0]
+        if delta > 0:
+            precomp_data = np.concatenate([precomp_data, np.zeros((delta, precomp_data.shape[1]))], axis=0)
+        elif delta < 0:
+            precomp_data = precomp_data[:self.max_detections]
+
+        return precomp_data.astype(np.float32)
+
 
 class TextField(RawField):
     vocab_cls = Vocab
